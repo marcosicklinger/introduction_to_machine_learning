@@ -53,11 +53,11 @@ def extractTweetFeatures(file_name, food_dict):
                               # 'replies_count', 
                               'popularity',
                               'followers_count', 'friends_count', 'listed_count', 'statuses_count', 
-                              #'mentions_tot_followers', 'mentions_tot_friends', 'mentions_tot_statuses',
+                              'mentions_tot_followers', 'mentions_tot_friends', 'mentions_tot_statuses',
                               'day', 'time',
                               'n_sentences', 'n_words', 'n_adjectives', 'n_adverbs', 'n_nouns', 'n_pronouns', 'n_verbs', 'n_long_words',
                               'n_hashtags', 'n_user_mentions', 
-                              'has_symbols', 'has_urls', 'has_photo', 'has_video', 'has_gif', 'has_questions'])
+                              'has_symbols', 'has_urls', 'has_photo', 'has_video', 'has_gif', 'has_questions', 'is_reply'])
     # dummy var needed to create a new row in the dataframe at each step
     n_row = 0                        
     # -----------------------------------------------------
@@ -129,6 +129,14 @@ def extractTweetFeatures(file_name, food_dict):
                             mentions_tot_statuses += user_mentioned.statuses_count
                         except:
                             continue
+                
+                # detect replies
+                if tweet.in_reply_to_status_id is not None:
+                    # Tweet is a reply
+                    is_reply = True
+                else:
+                    # Tweet is not a reply
+                    is_reply = False
 
                 # create row in dataframe
                 data.loc[n_row] = [tweets_decoded,
@@ -136,12 +144,12 @@ def extractTweetFeatures(file_name, food_dict):
                                    # replies_count, 
                                    tweet.favorite_count + tweet.retweet_count,
                                    tweet.user.followers_count, tweet.user.friends_count, tweet.user.listed_count, tweet.user.statuses_count,
-                                   #mentions_tot_followers, mentions_tot_friends, mentions_tot_statuses, 
+                                   mentions_tot_followers, mentions_tot_friends, mentions_tot_statuses, 
                                    day, time, 
                                    n_sentences, n_word, n_adj, n_adv, n_noun, n_prnoun, n_verb, count_long_words(tweets_decoded),
                                    len(tweet.entities['hashtags']), len(tweet.entities['user_mentions']), 
                                    len(tweet.entities['symbols']) > 0, len(tweet.entities['urls']) > 0,
-                                   has_photo, has_video, has_gif, has_questions]
+                                   has_photo, has_video, has_gif, has_questions, is_reply]
                 # setting new row's index for next iteration
                 n_row += 1   
     # ------------------------------------

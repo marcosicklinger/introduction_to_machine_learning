@@ -26,6 +26,7 @@ def downloadTweets(api, users, file_name = 'all_tweets.pkl', min_number_of_follo
     '''
 
     all_tweets = []
+    tot_tweets_dwlded = 0
 
     # download tweets of given users
     print("downloading...")
@@ -41,7 +42,10 @@ def downloadTweets(api, users, file_name = 'all_tweets.pkl', min_number_of_follo
                 new_tweets += [status]
             
             all_tweets.extend(new_tweets)
-            print('\t user {} -- {} tweets downloaded'.format(user, len(new_tweets)))
+            tweets_dwlded = len(new_tweets)
+            tot_tweets_dwlded += tweets_dwlded
+            print('\t user {} -- {} tweets downloaded'.format(user, tweets_dwlded))
+            print('\t\t we have {} tweets now...'.format(tot_tweets_dwlded))
 
     # saving to JSON
     print("saving tweets to file...")
