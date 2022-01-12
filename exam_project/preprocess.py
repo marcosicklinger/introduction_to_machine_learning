@@ -154,7 +154,7 @@ def extractTweetFeatures(file_name, food_dict):
                 n_row += 1   
     # ------------------------------------
 
-    for column in ['favorite_count', 'retweet_count', 'popularity', 'followers_count', 'friends_count', 'listed_count', 'statuses_count', 'n_pronouns', 'n_verbs', 'n_user_mentions', 'n_adverbs', 'n_hashtags', 'n_sentences', 'n_long_words', 'n_adjectives', 'n_words', 'n_nouns']:
+    for column in ['favorite_count', 'retweet_count', 'popularity', 'followers_count', 'friends_count', 'listed_count', 'statuses_count', 'n_pronouns', 'n_verbs', 'n_user_mentions', 'n_adverbs', 'n_hashtags', 'n_sentences', 'n_long_words', 'n_adjectives', 'n_words', 'n_nouns', 'mentions_tot_friends', 'mentions_tot_followers', 'mentions_tot_statuses']:
         data[column] = data[column].astype(float)
 
     return data
@@ -381,7 +381,7 @@ def count_long_words(text):
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 
-def BoW(data):
+def mostFrequentWords(data, n_most_frequent=10):
     '''computes Bag-of-Words for the dataset 'data'
 
        Parameters
@@ -401,28 +401,30 @@ def BoW(data):
     from collections import Counter
     
     # compute Bag-of-Words 
-    BoW_dict = computeBoW(data['text'])
-    BoW_features = []
-    for word in BoW_dict.keys():
-        BoW_features += ['has_{}'.format(word)]
+    words_dict = computeMostFrequentWords(data['text'], n_most_frequent)
+    words_features = []
+    for word in words_dict.keys():
+        words_features += ['has_{}'.format(word)]
 
     
     # retrieve n_most_frequent features to insert into dataframe
-    frequent_words_df = pd.DataFrame(columns=BoW_features)
+    frequent_words_df = pd.DataFrame(columns=words_features)
     n_row = 0
     for tweet in data['text']:
         text_tokens = word_tokenize(tweet.lower())
         for i in range(len(text_tokens)):
             text_tokens[i] = text_tokens[i].replace('-', ' ').split()
         text_tokens = sum(text_tokens, [])
-        frequent_words_df.loc[n_row] = [(word in text_tokens) for word in BoW_dict.keys()]
+        frequent_words_df.loc[n_row] = [(word in text_tokens) for word in words_dict.keys()]
         n_row += 1
+    frequent_words_df.reset_index(drop=True, inplace=True)
     
+    data.reset_index(drop=True, inplace=True)
     data = pd.concat([data, frequent_words_df], axis=1)
 
     return data 
 
-def computeBoW(list_of_texts, n_most_frequent=10):
+def computeMostFrequentWords(list_of_texts, n_most_frequent):
     ''' computes Bag-of-Words
 
         Parameters
@@ -506,7 +508,7 @@ def get_percentiles(points, n_percentiles):
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 
-def encodePandas(data):
+def encodePandas(data, popularity_index):
     '''performs one hot encoding on categorical variables through pandas' utilities
 
        Parameters
@@ -522,7 +524,7 @@ def encodePandas(data):
     # detect categorical columns of the datafram
     columns = data.columns
     numerical_columns = data._get_numeric_data().columns
-    other_columns = ['text', 'time', 'day']
+    other_columns = ['text']
     categorical_columns = list(set(columns) - set(numerical_columns) - set(other_columns))
 
     # loop over categorical columns and replace them with corresponding one hot encoding
@@ -532,9 +534,11 @@ def encodePandas(data):
         data = pd.concat([data, encoding], axis=1)
         data.drop([column], axis=1, inplace=True)
     
-    return data
+    popularity_encoded = pd.get_dummies(popularity_index, prefix='popularity')
+    
+    return data, popularity_encoded
 
-def encodeSklearn(data):
+def encodeSklearn(data, y):
     '''performs one hot encoding on categorical variables through sklearn' utilities
 
        Parameters
@@ -550,14 +554,11 @@ def encodeSklearn(data):
     from sklearn.preprocessing import OneHotEncoder
 
     data_array = np.array(data)
+    y_array = np.array(y).reshape(-1,1)
 
-    # if simple vector is passed, reshape it so it can be fed to the encoder
-    if data_array.ndim < 2:
-        data_array = data_array.reshape(-1,1)
-
-    encoder = OneHotEncoder()
+    encoder = OneHotEncoder(handle_unknown='ignore', drop='first')
     
-    return encoder.fit_transform(data_array).toarray()
+    return encoder.fit_transform(data_array).toarray(), encoder.fit_transform(y_array).toarray(), encoder
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------------------------------------
@@ -586,5 +587,31 @@ def dropZeros(data, frac_to_remove=0.8):
 
     # remove 
     data = data.drop(indeces_to_remove)
+
+    return data
+
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+
+def cleanData(data):
+    '''removes from dataframe not needed columns 
+       
+       Parameters
+       ----------
+       data: dataframe of interest
+
+       Returns
+       -------
+       cleaned dataframe
+    '''
+
+    columns_to_drop = ['text', 'favorite_count', 'retweet_count', 'popularity']
+    data_columns = list(data.columns)
+
+    if not any(column in columns_to_drop for column in data_columns):
+        raise KeyError()('dataframe has already been cleaned')
+    
+    data.drop(columns_to_drop, axis=1, inplace=True)
 
     return data
