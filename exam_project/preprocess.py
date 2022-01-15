@@ -11,7 +11,7 @@ import os
 import random
 
 
-def extractTweetFeatures(file_name, food_dict):
+def extractTweetFeatures(file_name, food_dict, api):
     '''extracts features of interest from file containing twitter raw data
 
        Parameters
@@ -118,17 +118,18 @@ def extractTweetFeatures(file_name, food_dict):
                 else:
                     has_photo, has_video, has_gif = False, False, False
                 
-                # If other user are mentioned, add the metrics of the other users (as a cumulative sum)
-                mentions_tot_followers, mentions_tot_friends, mentions_tot_statuses = 0, 0, 0
-                if len(tweet.entities.get('user_mentions')):
-                    for user_mentions in tweet.entities['user_mentions']:
-                        try:
-                            user_mentioned = api.get_user(screen_name=f"{user_mentions['screen_name']}")
-                            mentions_tot_followers += user_mentioned.followers_count
-                            mentions_tot_friends += user_mentioned.friends_count
-                            mentions_tot_statuses += user_mentioned.statuses_count
-                        except:
-                            continue
+                if api is not None:
+                    # If other user are mentioned, add the metrics of the other users (as a cumulative sum)
+                    mentions_tot_followers, mentions_tot_friends, mentions_tot_statuses = 0, 0, 0
+                    if len(tweet.entities.get('user_mentions')):
+                        for user_mentions in tweet.entities['user_mentions']:
+                            try:
+                                user_mentioned = api.get_user(screen_name=f"{user_mentions['screen_name']}")
+                                mentions_tot_followers += user_mentioned.followers_count
+                                mentions_tot_friends += user_mentioned.friends_count
+                                mentions_tot_statuses += user_mentioned.statuses_count
+                            except:
+                                continue
                 
                 # detect replies
                 if tweet.in_reply_to_status_id is not None:
