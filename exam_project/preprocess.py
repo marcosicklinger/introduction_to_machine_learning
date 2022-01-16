@@ -9,6 +9,7 @@ import pickle
 from tweepy import Cursor
 import os
 import random
+import copy
 
 
 def extractTweetFeatures(file_name, food_dict, api):
@@ -66,7 +67,7 @@ def extractTweetFeatures(file_name, food_dict, api):
     # ------------------------------------
     for tweet in all_tweets:
 
-        if (not tweet.retweeted) and ('RT @' not in tweet.full_text): # and (not tweet.in_reply_to_status_id_str != None):
+        if (not tweet.retweeted) and ('RT @' not in tweet.full_text) and (not tweet.in_reply_to_status_id_str != None):
             
             # get decoded tweet's text
             tweets_encoded = tweet.full_text.encode('utf-8')
@@ -482,6 +483,43 @@ def getPopularityIndex(data, n_percentiles=4):
        popularity_index: vector of computed indeces of popularity
 
     '''
+
+    # get percentiles of variable 'popularity'
+    p = get_percentiles(data['popularity'], n_percentiles)
+    # compute popularity index
+    popularity_index = [np.argmin(np.append(p, max(data['popularity'])) < popularity) + 1 for popularity in data['popularity']]
+    # popularity_index = [np.argmax(np.append(p, max(data['popularity'])) > popularity) + 1 for popularity in data['popularity']]
+
+    return popularity_index
+
+def getPopularityIndex(data, n_percentiles=4):
+    '''returns popularity index based on which percentile of the 
+       'popularity' variable's distribution the value belongs to
+
+       Parameters
+       ----------
+       data: dataframe of interest
+       n_percentiles: number of percentiles desired to compute the index
+
+       Returns
+       -------
+       popularity_index: vector of computed indeces of popularity
+
+    '''
+
+    users = set(X['user_name'])
+
+    X['popularity_index'] = len(X)*[None]
+    for user in users:
+        pop_user = list(X.loc[X['user_name'] == user]['popularity'])
+        p = get_percentiles(pop_user, n_percentiles)
+        popularity_index_user = [np.argmin(np.append(p, max(pop_user)) < popularity) + 1 for popularity in pop_user]
+        X.loc[X['user_name']==user, 'popularity_index'] = popularity_index_user
+    
+    y = copy.deepcopy(X['popularity_index'])
+    X.drop(['popularity_index'], inplace=True, axis=1)
+
+    return y
 
     # get percentiles of variable 'popularity'
     p = get_percentiles(data['popularity'], n_percentiles)
